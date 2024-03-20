@@ -1,0 +1,6 @@
+*.hda filter=lfs diff=lfs merge=lfs -text
+*.idx filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.spt filter=lfs diff=lfs merge=lfs -text
+*.sppr filter=lfs diff=lfs merge=lfs -text
+*.spexp filter=lfs diff=lfs merge=lfs -text

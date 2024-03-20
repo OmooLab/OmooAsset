@@ -1,0 +1,9 @@
+{
+  "enable": "houdini_os == 'windows' and houdini_version >= '19.5'",
+  "load_package_once": true,
+  "env": [
+    { "OMOOASSET_PATH": "$HOUDINI_PACKAGE_PATH/.." },
+    { "HOUDINI_OTLSCAN_PATH": "$OMOOASSET_PATH/assets/HDAs" },
+    { "PYTHONPATH": "$OMOOASSET_PATH/python" }
+  ]
+}
