@@ -165,3 +165,7 @@ HDAs/backup
 pythonlib*
 
 *.rat
+
+# act (Github Action Locally)
+.actrc
+.secrets

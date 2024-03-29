@@ -6,31 +6,8 @@ on:
       - "release/*"
 
 jobs:
-  draft_release:
-    name: Draft Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.draft_release.outputs.upload_url }}
-      version: ${{ steps.set_env.outputs.version }}
-    steps:
-      - name: Set Version Env
-        id: set_env
-        run: |
-          ref_name=${{ github.ref_name }}
-          echo "version=${ref_name#release/}" >> "$GITHUB_OUTPUT"
-      - name: Get release
-        id: draft_release
-        uses: cardinalby/git-get-release-action@1.2.4
-        with:
-          releaseName: Draft
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
   # draft_release:
   #   name: Draft Release
-  #   permissions:
-  #     contents: write
-  #     pull-requests: write
   #   runs-on: ubuntu-latest
   #   outputs:
   #     upload_url: ${{ steps.draft_release.outputs.upload_url }}
@@ -41,17 +18,40 @@ jobs:
   #       run: |
   #         ref_name=${{ github.ref_name }}
   #         echo "version=${ref_name#release/}" >> "$GITHUB_OUTPUT"
-  #     - name: Draft Release ${{ steps.set_env.outputs.version }}
-  #       uses: release-drafter/release-drafter@v5
+  #     - name: Get release
   #       id: draft_release
+  #       uses: cardinalby/git-get-release-action@1.2.4
   #       with:
-  #         name: ${{ steps.set_env.outputs.version }}
-  #         tag: ${{ steps.set_env.outputs.version }}
+  #         releaseName: Draft
   #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         GITHUB_TOKEN: ${{ github.token }}
 
-  build_houdini_package:
-    name: Build Houdini Package
+  draft_release:
+    name: Draft Release
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.draft_release.outputs.upload_url }}
+      version: ${{ steps.set_env.outputs.version }}
+    steps:
+      - name: Set Version Env
+        id: set_env
+        run: |
+          ref_name=${{ github.ref_name }}
+          echo "version=${ref_name#release/}" >> "$GITHUB_OUTPUT"
+      - name: Draft Release ${{ steps.set_env.outputs.version }}
+        uses: release-drafter/release-drafter@v5
+        id: draft_release
+        with:
+          name: ${{ steps.set_env.outputs.version }}
+          tag: ${{ steps.set_env.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  upload_houdini_package:
+    name: Upload Houdini Package
     needs: draft_release
     runs-on: ubuntu-latest
     steps:
@@ -59,7 +59,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Zip Package
         run: |
-          zip -r package.zip packages python README.md
+          rm -r assets/Icons
+          rm -r assets/OCIO
+          zip -r package.zip assets packages python README.md
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -70,9 +72,9 @@ jobs:
           asset_path: ./package.zip
           asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}.zip
           asset_content_type: application/zip
-  
-  build_blender_addon:
-    name: Build Blender Add-on
+
+  upload_substance_plugin:
+    name: Upload Substance 3D Painter Plugin
     needs: draft_release
     runs-on: ubuntu-latest
     steps:
@@ -80,8 +82,89 @@ jobs:
         uses: actions/checkout@v4
       - name: Zip Add-on
         run: |
-          mv plugins/Blender plugins/OmooAsset
-          zip -r package.zip plugins/OmooAsset
+          cd plugins/Substance3D_Painter
+          zip -r package.zip assets python
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ./plugins/Substance3D_Painter/package.zip
+          asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_SubstanceBridge.zip
+          asset_content_type: application/zip
+
+  upload_blender_addon:
+    name: Upload Blender Add-on
+    needs: draft_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Zip Add-on
+        run: |
+          cd plugins/Blender
+          zip -r package.zip OmooAsset
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ./plugins/Blender/package.zip
+          asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_Blender.zip
+          asset_content_type: application/zip
+
+  upload_cinema4d_plugin:
+    name: Upload Cinema4D Plugin
+    needs: draft_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Install Dependencies
+        run: |
+          cd plugins/Cinema4D
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip list
+      - name: Zip Package
+        run: |
+          cd plugins/Cinema4D
+          mkdir -p python311/libs
+          mv venv/lib/python3.11/site-packages/pxr python311/libs/
+          mv venv/lib/python3.11/site-packages/usd_core-24.3.dist-info python311/libs/
+          zip -r package.zip plugins python311
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ./plugins/Cinema4D/package.zip
+          asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_Cinema4D.zip
+          asset_content_type: application/zip
+
+  upload_ocio_config:
+    name: Upload OCIO Config
+    needs: draft_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Zip Package
+        run: |
+          cd assets
+          zip -r ../package.zip OCIO
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -90,42 +173,5 @@ jobs:
         with:
           upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
           asset_path: ./package.zip
-          asset_name: OmooAsset-Blender_${{ needs.draft_release.outputs.version }}.zip
+          asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_OCIO.zip
           asset_content_type: application/zip
-  
-  # build_cinema4d_plugin:
-  #   name: Build Cinema4D Plugin
-  #   needs: draft_release
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: Install Dependencies
-  #       run: |
-  #         python -m venv venv
-  #         source venv/bin/activate
-  #         python -m pip install --upgrade pip
-  #         python -m pip install -r requirements.txt
-  #         python -m pip list
-  #     - name: Move Dependencies
-  #       run: |
-  #         mkdir -p pythonlib${{ matrix.python-version }}/Lib
-  #         mv venv/lib/python${{ matrix.python-version }}/site-packages pythonlib${{ matrix.python-version }}/Lib/
-  #         rm -r venv
-  #     - name: Zip Package
-  #       run: |
-  #         zip -r package.zip packages preferences pythonlib${{ matrix.python-version }} python nodes.json README.md
-  #     - name: Upload Release Asset
-  #       id: upload-release-asset
-  #       uses: actions/upload-release-asset@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-  #         asset_path: ./package.zip
-  #         asset_name: Omoospace-Houdini_${{ needs.draft_release.outputs.version }}_py${{ matrix.python-version }}.zip
-  #         asset_content_type: application/zip
