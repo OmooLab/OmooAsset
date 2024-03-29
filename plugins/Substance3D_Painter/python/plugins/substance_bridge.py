@@ -63,7 +63,7 @@ class LabeledInput(QWidget):
         self.input = widget
 
 
-class SubstanceBridgePlugin():
+class OmooAsset_SubstanceBridge():
     def __init__(self):
 
         # Main Tool Bar
@@ -154,7 +154,7 @@ class SubstanceBridgePlugin():
 
     @property
     def base_mat(self):
-        resources = substance_painter.resource.search("OmooLab_Base")
+        resources = substance_painter.resource.search("OmooLab Standard Surface Base")
         if len(resources) == 0:
             self.log.error("Get no base mat!")
             return None
@@ -236,7 +236,7 @@ class SubstanceBridgePlugin():
             return
 
         export_preset = substance_painter.resource.ResourceID(
-            context="your_assets", name="OmooLab Substance Bridge")
+            context="your_assets", name="OmooLab Standard Surface")
 
         # Set the details of the export (a comprehensive example of all the
         # configuration options is presented at the bottom of the page):
@@ -420,7 +420,7 @@ SUBSTANCE_BRIDGE = None
 
 def start_plugin():
     global SUBSTANCE_BRIDGE
-    SUBSTANCE_BRIDGE = SubstanceBridgePlugin()
+    SUBSTANCE_BRIDGE = OmooAsset_SubstanceBridge()
 
 
 def close_plugin():
