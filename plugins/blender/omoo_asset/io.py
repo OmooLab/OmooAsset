@@ -240,9 +240,9 @@ class ImportOmooAsset(Operator, ImportHelper):
     )  # type: ignore
     
     def execute(self, context):
-        file_path: str = Path(self.filepath).resolve().as_posix()
+        file_path: Path = Path(self.filepath).resolve()
 
-        stage = Usd.Stage.Open(file_path)
+        stage = Usd.Stage.Open(file_path.as_posix())
         asset_prim = stage.GetDefaultPrim()
         asset_name = asset_prim.GetName()
         materials_prim = stage.GetPrimAtPath(
@@ -255,7 +255,7 @@ class ImportOmooAsset(Operator, ImportHelper):
             geometry_paths.append(geometry_prim.GetPath())
 
         # import usd
-        bpy.ops.wm.usd_import(filepath=self.filepath, relative_path=True)
+        bpy.ops.wm.usd_import(filepath=file_path.as_posix(), relative_path=True)
 
         # edit materials
         materials = set()
