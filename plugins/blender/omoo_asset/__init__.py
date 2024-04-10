@@ -12,7 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-from .omoo_asset import (
+from .io import (
     OmooAssetMenu,
     ImportOmooAsset
 )

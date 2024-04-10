@@ -2,7 +2,7 @@
 
 ![alt text](docs/images/overview.png)
 
-# OmooAsset
+# Omoo Asset
 
 USD based 3D model storage solution, our goal is **"create once, render anywhere"**.
 If you're struggling to keep your model assets rendering consistently on different platforms by repeatedly creating material spheres manually, and Houdini is in your workflow, then Omoo Asset is the best choice!
@@ -19,9 +19,9 @@ Future supported platforms:
 - Unreal
 - Unity
 
-# Why OmooAsset ?
+# Why Omoo Asset ?
 
-Theoretically, as long as the platform can fully support USD | MaterialX, it can ensure consistency itself. However, rendering effects and channel definitions are difficult to standardize across platforms and are unlikely to be resolved in the short term. For example, some renderers support the effect of model scaling on displacement strength, while others do not. This is a problem that Omoo Asset wants to solve, to maximize the consistency of the rendering result, especially the subsurface scattering.
+Theoretically, as long as the platform can fully support USD | MaterialX, it can ensure consistency itself. However, materials and channel definitions are difficult to standardize across platforms and are unlikely to be resolved in the short term. For example, some renderers support the effect of model scaling on displacement strength, while others do not. This is a problem that Omoo Asset wants to solve, to maximize the consistency of the rendering result, especially the subsurface scattering.
 
 ![alt text](docs/images/results.png)
 

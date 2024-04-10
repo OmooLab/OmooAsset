@@ -82,7 +82,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Zip Add-on
         run: |
-          cd plugins/Substance3D_Painter
+          cd plugins/substance3d_painter
           zip -r package.zip assets python
       - name: Upload Release Asset
         id: upload-release-asset
@@ -91,7 +91,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./plugins/Substance3D_Painter/package.zip
+          asset_path: ./plugins/substance3d_painter/package.zip
           asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_SubstanceBridge.zip
           asset_content_type: application/zip
 
@@ -104,8 +104,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Zip Add-on
         run: |
-          cd plugins/Blender
-          zip -r package.zip OmooAsset
+          cd plugins/blender
+          zip -r package.zip omoo_asset
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -113,36 +113,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./plugins/Blender/package.zip
+          asset_path: ./plugins/blender/package.zip
           asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_Blender.zip
           asset_content_type: application/zip
 
   upload_cinema4d_plugin:
     name: Upload Cinema4D Plugin
     needs: draft_release
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: 3.11.6
       - name: Install Dependencies
         run: |
-          cd plugins/Cinema4D
+          cd plugins/cinema4d
           python -m venv venv
-          source venv/bin/activate
+          . venv/Scripts/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip list
       - name: Zip Package
         run: |
-          cd plugins/Cinema4D
+          cd plugins/cinema4d
           mkdir -p python311/libs
-          mv venv/lib/python3.11/site-packages/pxr python311/libs/
-          mv venv/lib/python3.11/site-packages/usd_core-24.3.dist-info python311/libs/
-          zip -r package.zip plugins python311
+          mv venv/Lib/site-packages/pxr python311/libs/
+          mv venv/Lib/site-packages/usd_core-24.3.dist-info python311/libs/
+          7z a package.zip plugins python311 -r
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -150,7 +150,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.draft_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./plugins/Cinema4D/package.zip
+          asset_path: ./plugins/cinema4d/package.zip
           asset_name: OmooAsset_${{ needs.draft_release.outputs.version }}_Cinema4D.zip
           asset_content_type: application/zip
 
