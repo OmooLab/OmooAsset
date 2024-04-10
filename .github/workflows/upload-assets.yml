@@ -105,7 +105,7 @@ jobs:
       - name: Zip Add-on
         run: |
           cd plugins/blender
-          zip -r package.zip OmooAsset
+          zip -r package.zip omoo_asset
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -132,7 +132,7 @@ jobs:
         run: |
           cd plugins/cinema4d
           python -m venv venv
-          source venv/Scripts/activate
+          . venv/Scripts/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip list
