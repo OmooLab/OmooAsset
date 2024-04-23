@@ -1,261 +1,51 @@
 import bpy
-from bpy.props import (
-    StringProperty,
-    BoolProperty,
-    CollectionProperty,
-    EnumProperty,
-    FloatProperty,
-    FloatVectorProperty,
-)
-from bpy_extras.io_utils import (
-    ImportHelper
-)
-from bpy.types import (
-    Operator
-)
 from pathlib import Path
 from pxr import Usd
 
-
-NODE_DICT = {
-    "BaseColor": {
-        "type": "color_tex",
-        "source": "BaseColor:file",
-        "to": ["SurfaceShader:Base Color"]
-    },
-    "Metalness": {
-        "type": "float_tex",
-        "source": "Metalness:file",
-        "to": ["SurfaceShader:Metallic"]
-    },
-    "SpecularRoughness": {
-        "type": "float_tex",
-        "source": "SpecularRoughness:file",
-        "to": ["SurfaceShader:Roughness"]
-    },
-    "SpecularColor": {
-        "type": "color_tex",
-        "source": "SpecularColor:file",
-        "to": ["SurfaceShader:Specular Tint"]
-    },
-    "SpecularAnisotropy": {
-        "type": "float_tex",
-        "source": "SpecularAnisotropy:file",
-        "to": ["SurfaceShader:Anisotropic"]
-    },
-    "SpecularRotation": {
-        "type": "float_tex",
-        "source": "SpecularRotation:file",
-        "to": ["SurfaceShader:Anisotropic Rotation"]
-    },
-    "CoatWeight": {
-        "type": "float_tex",
-        "source": "CoatWeight:file",
-        "to": ["SurfaceShader:Coat Weight"]
-    },
-    "CoatNormal": {
-        "type": "normal_tex",
-        "source": "CoatNormal:file",
-        "to": ["CoatNormalMap:Color"]
-    },
-    "CoatNormalMap": {
-        "type": "normal",
-        "to": ["SurfaceShader:Coat Normal"]
-    },
-    "CoatColor": {
-        "type": "color_tex",
-        "source": "CoatColor:file",
-        "to": ["SurfaceShader:Coat Tint"]
-    },
-    "CoatRoughness": {
-        "type": "float_tex",
-        "source": "CoatRoughness:file",
-        "to": ["SurfaceShader:Coat Roughness"]
-    },
-    "SheenWeight": {
-        "type": "float_tex",
-        "source": "SheenWeight:file",
-        "to": ["SurfaceShader:Sheen Weight"]
-    },
-    "SheenColor": {
-        "type": "color_tex",
-        "source": "SheenColor:file",
-        "to": ["SurfaceShader:Sheen Tint"]
-    },
-    "SheenRoughness": {
-        "type": "float_tex",
-        "source": "SheenRoughness:file",
-        "to": ["SurfaceShader:Sheen Roughness"]
-    },
-    "SubsurfaceWeight": {
-        "type": "float_tex",
-        "source": "SubsurfaceWeight:file",
-        "to": ["SurfaceShader:Subsurface Weight"]
-    },
-    "SubsurfaceRadius": {
-        "type": "color_tex",
-        "source": "SubsurfaceRadius:file",
-        "to": ["SurfaceShader:Subsurface Radius"]
-    },
-    "SubsurfaceScale": {
-        "type": "float",
-        "default": 1.0,
-        "source": "SubsurfaceScale:value",
-        "to": ["SubsurfaceSceneScale:0"]
-    },
-    "SubsurfaceSceneScale": {
-        "type": "multiply",
-        "to": ["SurfaceShader:Subsurface Scale"]
-    },
-    "SubsurfaceAnisotropy": {
-        "type": "float_tex",
-        "source": "SubsurfaceAnisotropy:file",
-        "to": ["SubsurfaceAnisotropyRemap:Value"]
-    },
-    "SubsurfaceAnisotropyRemap": {
-        "type": "remap",
-        "to": ["SubsurfaceAnisotropyOffset:0"]
-    },
-    "SubsurfaceAnisotropyOffset": {
-        "type": "add",
-        "default": 0.0,
-        "source": "SubsurfaceAnisotropyOffset:in2",
-        "to": ["SurfaceShader:Subsurface Anisotropy"]
-    },
-    "EmissionScale": {
-        "type": "float",
-        "default": 1.0,
-        "source": "EmissionScale:value",
-        "to": ["SurfaceShader:Emission Strength"]
-    },
-    "EmissionColor": {
-        "type": "color_tex",
-        "source": "EmissionColor:file",
-        "to": ["SurfaceShader:Emission Color"]
-    },
-    "Opacity": {
-        "type": "float_tex",
-        "source": "Opacity:file",
-        "to": ["SurfaceShader:Alpha"]
-    },
-    "TransmissionWeight": {
-        "type": "float_tex",
-        "source": "TransmissionWeight:file",
-        "to": ["SurfaceShader:Transmission Weight"]
-    },
-    "Normal": {
-        "type": "normal_tex",
-        "source": "Normal:file",
-        "to": ["NormalMap:Color"]
-    },
-    "NormalMap": {
-        "type": "normal",
-        "to": ["CombinedNormal:Normal"]
-    },
-    "Detail": {
-        "type": "float_tex",
-        "source": "Detail:file",
-        "to": ["DetailScale:0"]
-    },
-    "DetailScale": {
-        "type": "multiply",
-        "default": 1.0,
-        "source": "DetailScale:in2",
-        "to": ["CombinedNormal:Height", "CombinedDisplacement:1"]
-    },
-    "CombinedNormal": {
-        "type": "normal_add",
-        "to": ["SurfaceShader:Normal"]
-    },
-    "Displacement": {
-        "type": "float_tex",
-        "source": "Displacement:file",
-        "to": ["CombinedDisplacement:0"]
-    },
-    "CombinedDisplacement": {
-        "type": "add",
-        "to": ["DisplacementShader:Height"]
-    },
-    "scene_scale": {
-        "type": "float",
-        "default": 1.0,
-        "source": ":scene_scale",
-        "to": ["SubsurfaceSceneScale:1"]
-    },
-    "displacement_on": {
-        "type": "float",
-        "default": 0.0,
-        "source": ":displacement_on",
-        "to": ["DisplacementShader:Scale"]
-    }
-}
-
-PROP_DICT = {
-    "IOR": {
-        "default": 1.5,
-        "source": "specular_IOR"
-    },
-    "Coat IOR": {
-        "default": 1.5,
-        "source": "coat_IOR"
-    },
-}
+from .oss import NODE_DICT, PROP_DICT
+from .utils import get_object_prim_path, get_object_root
 
 
-def get_object_prim_path(obj):
-    tree = [obj]
-    while obj.parent:
-        obj = obj.parent
-        tree.append(obj)
-
-    return "/"+"/".join(map(lambda x: x.name.split(".")[0], tree[::-1]))
-
-
-def get_object_root(obj):
-    while obj.parent:
-        obj = obj.parent
-    return obj
-
-
-class ImportOmooAsset(Operator, ImportHelper):
+class ImportOmooAsset(bpy.types.Operator):
     bl_idname = "omoo_asset.import"
     bl_label = "Omoo Asset (.usd)"
     bl_description = "Load STL triangle mesh data"
     bl_options = {'UNDO'}
 
-    filepath: StringProperty(
+    filepath: bpy.props.StringProperty(
         subtype="FILE_PATH"
     )  # type: ignore
 
-    filter_glob: StringProperty(
+    filter_glob: bpy.props.StringProperty(
         default='*.usd',
         options={'HIDDEN'}
     )  # type: ignore
 
-    global_scale: FloatProperty(
+    global_scale: bpy.props.FloatProperty(
         name="Scale",
         soft_min=0.001, soft_max=1000.0,
         min=1e-6, max=1e6,
         default=1.0,
     )  # type: ignore
-    
+
     def execute(self, context):
         file_path: Path = Path(self.filepath).resolve()
 
-        stage = Usd.Stage.Open(file_path.as_posix())
+        stage = Usd.Stage.Open(str(file_path))
         asset_prim = stage.GetDefaultPrim()
         asset_name = asset_prim.GetName()
         materials_prim = stage.GetPrimAtPath(
             f"{asset_prim.GetPath()}/Materials")
-
         geometries_prim = stage.GetPrimAtPath(
             f"{asset_prim.GetPath()}/Geometries")
+
         geometry_paths = []
         for geometry_prim in geometries_prim.GetChildren():
             geometry_paths.append(geometry_prim.GetPath())
 
         # import usd
-        bpy.ops.wm.usd_import(filepath=file_path.as_posix(), relative_path=True)
+        bpy.ops.wm.usd_import(
+            filepath=str(file_path), relative_path=False)
 
         # edit materials
         materials = set()
@@ -392,11 +182,11 @@ class ImportOmooAsset(Operator, ImportHelper):
 
                 elif node_type == "normal_add":
                     node = nodes.new('ShaderNodeBump')
-                    
+
                 elif node_type == "float":
                     node = nodes.new('ShaderNodeValue')
                     node.outputs[0].default_value = node_value
-                    
+
                 else:
                     ...
 
@@ -457,15 +247,6 @@ class ImportOmooAsset(Operator, ImportHelper):
 
         return {'FINISHED'}
 
-
-def menu_import(self, context):
-    layout = self.layout
-    layout.operator(ImportOmooAsset.bl_idname)
-
-
-class OmooAssetMenu():
-    def register():
-        bpy.types.TOPBAR_MT_file_import.prepend(menu_import)  # Render menu
-
-    def unregister():
-        bpy.types.TOPBAR_MT_file_import.remove(menu_import)  # Render menu
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}

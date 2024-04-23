@@ -57,6 +57,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          lfs: 'true'
       - name: Zip Package
         run: |
           rm -r assets/Icons
@@ -80,6 +82,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          lfs: 'true'
       - name: Zip Add-on
         run: |
           cd plugins/substance3d_painter
