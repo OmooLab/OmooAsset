@@ -423,9 +423,9 @@ class ImportOmooAsset(c4d.plugins.CommandData):
         if not file_path:
             return
 
-        file_path_str: str = Path(file_path).resolve().as_posix()
+        file_path: str = Path(file_path).resolve()
 
-        stage = Usd.Stage.Open(file_path_str)
+        stage = Usd.Stage.Open(str(file_path))
         asset_prim = stage.GetDefaultPrim()
         asset_name = asset_prim.GetName()
         materials_prim = stage.GetPrimAtPath(
@@ -611,7 +611,7 @@ class ImportOmooAsset(c4d.plugins.CommandData):
                 subsurface_scale = GetNodeByExactName(graph, "SubsurfaceScale")
                 detail_normal = GetNodeByExactName(graph, "DetailNormal")
                 scene_scale = GetNodeByExactName(graph, "scene_scale")
-                
+
                 SetNodeProp(detail_normal, 'scale', 0.5)
                 SetNodeProp(scene_scale, '0',
                             float(GetNodeProp(scene_scale, '0'))*100)
@@ -622,25 +622,24 @@ class ImportOmooAsset(c4d.plugins.CommandData):
 
         ChangeSetting()
         doc.StartUndo()  # Start recording undos
-        print(file_path_str)
-        
+
         # store original scale
         project_scale = doc[c4d.DOCUMENT_DOCUNIT].GetUnitScale()
-        
+
         # Imports without dialogs
         if not c4d.documents.MergeDocument(
             doc=doc,
-            name=file_path_str,
+            name=str(file_path),
             loadflags=c4d.SCENEFILTER_OBJECTS | c4d.SCENEFILTER_MATERIALS,
             thread=None
         ):
             raise RuntimeError("Fail to load USD")
-        
+
         # reset scale
         sclData = c4d.UnitScaleData()
         sclData.SetUnitScale(project_scale[0], project_scale[1])
         doc[c4d.DOCUMENT_DOCUNIT] = sclData
-        
+
         asset_object = doc.SearchObject(asset_name)
         asset_object.SetRelScale(c4d.Vector(100))
         doc.SetActiveObject(asset_object, c4d.SELECTION_NEW)

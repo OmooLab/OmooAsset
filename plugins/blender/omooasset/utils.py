@@ -1,4 +1,8 @@
 
+def get_node_by_type(nodes, type_name: str):
+    return [node for node in nodes if type(node).__name__ == type_name]
+
+
 def get_object_prim_path(obj):
     tree = [obj]
     while obj.parent:

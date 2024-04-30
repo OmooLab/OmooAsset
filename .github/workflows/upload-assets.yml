@@ -58,7 +58,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          lfs: 'true'
+          lfs: "true"
       - name: Zip Package
         run: |
           rm -r assets/Icons
@@ -83,7 +83,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          lfs: 'true'
+          lfs: "true"
       - name: Zip Add-on
         run: |
           cd plugins/substance3d_painter
@@ -109,7 +109,7 @@ jobs:
       - name: Zip Add-on
         run: |
           cd plugins/blender
-          zip -r package.zip omoo_asset
+          zip -r package.zip omooasset
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1

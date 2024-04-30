@@ -3,7 +3,7 @@ from pathlib import Path
 from pxr import Usd
 
 from .oss import NODE_DICT, PROP_DICT
-from .utils import get_object_prim_path, get_object_root
+from .utils import get_node_by_type, get_object_prim_path, get_object_root
 
 
 class ImportOmooAsset(bpy.types.Operator):
@@ -72,7 +72,8 @@ class ImportOmooAsset(bpy.types.Operator):
             links = material.node_tree.links
 
             # Modify/Create "Surface Shader" and "Displacement Shader"
-            surface_node = nodes.get("Principled BSDF")
+            surface_node = get_node_by_type(
+                nodes, "ShaderNodeBsdfPrincipled")[0]
             surface_node.name = "SurfaceShader"
             surface_node.label = "SurfaceShader"
 
@@ -81,7 +82,7 @@ class ImportOmooAsset(bpy.types.Operator):
             displacement_node.label = "DisplacementShader"
             displacement_node.inputs[1].default_value = 0
 
-            out_node = nodes.get("Material Output")
+            out_node = get_node_by_type(nodes, "ShaderNodeOutputMaterial")[0]
 
             links.new(
                 displacement_node.outputs[0],
@@ -147,8 +148,16 @@ class ImportOmooAsset(bpy.types.Operator):
                         node = nodes.new('ShaderNodeTexImage')
                         node.image = bpy.data.images.load(node_value)
                         node.image.source = 'TILED'
-                        node.image.colorspace_settings.name = 'Linear Rec.709 (sRGB)'\
-                            if node_type == "color_tex" else 'Raw'
+
+                        if bpy.context.scene.display_settings.display_device == 'ACES':
+                            node.image.colorspace_settings.name = 'Utility - Linear - Rec.709'\
+                                if node_type == "color_tex" else 'Utility - Raw'
+                        elif 'Display' in bpy.context.scene.display_settings.display_device:
+                            node.image.colorspace_settings.name = 'Linear Rec.709 (sRGB)'\
+                                if node_type == "color_tex" else 'Raw'
+                        else:
+                            node.image.colorspace_settings.name = 'Linear Rec.709'\
+                                if node_type == "color_tex" else 'Non-Color'
                     else:
                         # if not get any texture use constant value node
                         node = nodes.new('ShaderNodeRGB') \
