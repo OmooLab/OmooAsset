@@ -29,7 +29,7 @@ bl_info = {
     "author": "MaNan",
     "description": "",
     "blender": (2, 80, 0),
-    "version": (0, 0, 1),
+    "version": (0, 0, 3),
     "location": "File > Import-Export",
     "warning": "",
     "category": "Import-Export"

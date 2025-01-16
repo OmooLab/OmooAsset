@@ -18,10 +18,30 @@ from pxr import Usd
 
 
 NODE_DICT = {
+    "BaseColorMix": {
+        "type": "mix",  
+        "to": ["SurfaceShader:Base Color"]
+    },
+    "SubsurfaceRadiusMix": {
+        "type": "mix",  
+        "to": ["SurfaceShader:Subsurface Radius"]
+    },
+    "PointColor": {
+        "type": "attribute",  # 用来标记它是一个从顶点色读取的节点
+        "default": "displayColor",
+        "source": "PointColor:varname",    # 顶点色的默认来源
+        "to": ["BaseColorMix:2","SubsurfaceRadiusMix:2"]
+    },
+    "PointColorWeight": {
+        "type": "float",
+        "default": 0.0,
+        "source": "PointColorWeight:value",
+        "to": ["BaseColorMix:0","SubsurfaceRadiusMix:0"]
+    },
     "BaseColor": {
         "type": "color_tex",
         "source": "BaseColor:file",
-        "to": ["SurfaceShader:Base Color"]
+        "to": ["BaseColorMix:1"]
     },
     "Metalness": {
         "type": "float_tex",
@@ -95,7 +115,7 @@ NODE_DICT = {
     "SubsurfaceRadius": {
         "type": "color_tex",
         "source": "SubsurfaceRadius:file",
-        "to": ["SurfaceShader:Subsurface Radius"]
+        "to": ["SubsurfaceRadiusMix:1"]
     },
     "SubsurfaceScale": {
         "type": "float",
@@ -187,7 +207,8 @@ NODE_DICT = {
         "default": 0.0,
         "source": ":displacement_on",
         "to": ["DisplacementShader:Scale"]
-    }
+    },
+
 }
 
 PROP_DICT = {
@@ -253,9 +274,12 @@ class ImportOmooAsset(Operator, ImportHelper):
         geometry_paths = []
         for geometry_prim in geometries_prim.GetChildren():
             geometry_paths.append(geometry_prim.GetPath())
+        
+        print("file_path",file_path)
 
         # import usd
-        bpy.ops.wm.usd_import(filepath=file_path.as_posix(), relative_path=True)
+        # bpy.ops.wm.usd_import(filepath=file_path.as_posix(), relative_path=True)
+        bpy.ops.wm.usd_import(filepath=str(file_path), relative_path=True)
 
         # edit materials
         materials = set()
@@ -282,7 +306,11 @@ class ImportOmooAsset(Operator, ImportHelper):
             links = material.node_tree.links
 
             # Modify/Create "Surface Shader" and "Displacement Shader"
-            surface_node = nodes.get("Principled BSDF")
+            surface_node = None
+            for node in nodes:
+                if node.type == 'BSDF_PRINCIPLED':
+                    surface_node = node
+                    break  # 找到后立即停止遍历
             surface_node.name = "SurfaceShader"
             surface_node.label = "SurfaceShader"
 
@@ -291,8 +319,13 @@ class ImportOmooAsset(Operator, ImportHelper):
             displacement_node.label = "DisplacementShader"
             displacement_node.inputs[1].default_value = 0
 
-            out_node = nodes.get("Material Output")
-
+            # 查找类型为 OUTPUT_MATERIAL 的节点
+            out_node = None
+            for node in nodes:
+                if node.type == 'OUTPUT_MATERIAL':
+                    out_node = node
+                    break  # 找到后停止遍历
+            
             links.new(
                 displacement_node.outputs[0],
                 out_node.inputs['Displacement']
@@ -342,23 +375,42 @@ class ImportOmooAsset(Operator, ImportHelper):
                     # get texture default value
                     tex_default_value = 0.0 if node_type == "float_tex" else (
                         0.0, 0.0, 0.0, 0.0)
+                    
                     if shader_prim.IsValid():
                         shader_default = shader_prim.GetAttribute(
                             "inputs:default")
                         if shader_default.IsValid():
-                            tex_default_value = shader_default.Get(0)
-                            if node_type != "float_tex":
-                                tex_default_value = (
-                                    tex_default_value[0], tex_default_value[1], tex_default_value[2], 1.0)
-                    # print(tex_default_value)
+                            if shader_default.Get(0) != None:
+                                tex_default_value = shader_default.Get(0)
+                                print(f"{node_name}",tex_default_value)
+                                if node_type != "float_tex":
+                                    tex_default_value = (
+                                        tex_default_value[0], tex_default_value[1], tex_default_value[2], 1.0)
+                        
+                    
                     if node_value:
                         # blender cannot read UNC path with slash
                         node_value = node_value.replace("/", "\\")
                         node = nodes.new('ShaderNodeTexImage')
                         node.image = bpy.data.images.load(node_value)
                         node.image.source = 'TILED'
-                        node.image.colorspace_settings.name = 'Linear Rec.709 (sRGB)'\
-                            if node_type == "color_tex" else 'Raw'
+
+                        # 尝试设置颜色空间为 Linear Rec.709 (sRGB) 或 Linear Rec.709
+                        try:
+                            if node_type == "color_tex":
+                                # 首先尝试设置为 'Linear Rec.709 (sRGB)'
+                                node.image.colorspace_settings.name = 'Linear Rec.709 (sRGB)'
+                            else:
+                                # 如果是非颜色纹理，使用 'Non-Color'
+                                node.image.colorspace_settings.name = 'Raw'
+                        except Exception as e:
+                            print(f"Error setting colorspace for {node_value}: {e}")
+                            # 如果出错，则设置为 'Linear Rec.709'
+                            if node_type == "color_tex":
+                                node.image.colorspace_settings.name = 'Linear Rec.709'
+                            else:
+                                # 如果是非颜色纹理，使用 'Non-Color'
+                                node.image.colorspace_settings.name = 'Non-Color'
                     else:
                         # if not get any texture use constant value node
                         node = nodes.new('ShaderNodeRGB') \
@@ -396,7 +448,15 @@ class ImportOmooAsset(Operator, ImportHelper):
                 elif node_type == "float":
                     node = nodes.new('ShaderNodeValue')
                     node.outputs[0].default_value = node_value
-                    
+
+                elif node_type == "attribute":
+                    # 新增：处理顶点色的读取节点
+                    node = nodes.new('ShaderNodeAttribute')
+                    node.attribute_name = node_value  # 使用 default 或 source 中的属性名
+                
+                elif node_type == "mix":
+                    # 创建一个 Mix RGB 节点
+                    node = nodes.new('ShaderNodeMixRGB')
                 else:
                     ...
 
@@ -434,7 +494,8 @@ class ImportOmooAsset(Operator, ImportHelper):
 
                 surface_node.inputs[prop_name].default_value = prop_value
 
-            surface_node.subsurface_method = 'BURLEY'
+            # surface_node.subsurface_method = 'BURLEY'
+            surface_node.subsurface_method = 'RANDOM_WALK'
             nodes["SubsurfaceScale"].outputs[0].default_value *= 10
             nodes["CombinedNormal"].inputs[0].default_value = 0.5
 
@@ -443,17 +504,76 @@ class ImportOmooAsset(Operator, ImportHelper):
             material.cycles.displacement_method = 'DISPLACEMENT'
 
             def add_driver(prop_name):
-                driver = nodes[prop_name].outputs[0].driver_add(
-                    "default_value")
+
+                # 获取目标节点的输出端口
+                output_port = nodes[prop_name].outputs[0]
+
+                # 创建驱动器
+                driver = output_port.driver_add("default_value")
+                
+                # 创建驱动器变量
                 var1 = driver.driver.variables.new()
                 var1.name = prop_name
                 var1.targets[0].id_type = 'MATERIAL'
                 var1.targets[0].id = material
                 var1.targets[0].data_path = f'["{prop_name}"]'
+                
+                # 设置驱动器表达式
                 driver.driver.expression = var1.name
 
-            add_driver('scene_scale')
-            add_driver('displacement_on')
+                for link in nodes[prop_name].outputs[0].links:
+                    material.node_tree.links.remove(link)
+
+            # add_driver('scene_scale')
+            # add_driver('displacement_on')
+            
+            # link the nodes
+            for node_name in NODE_DICT.keys():
+                node = nodes.get(node_name)
+                to_list = NODE_DICT[node_name]["to"]
+
+                for to in to_list:
+                    # print(node_name, to)
+                    target_node = nodes.get(to.split(":")[0])
+                    target_input = to.split(":")[1]
+                    links.new(
+                        node.outputs[0],
+                        target_node.inputs[
+                            int(target_input)
+                            if target_input.isnumeric() else target_input
+                        ]
+                    )
+            
+            # 创建 半透 BSDF 节点
+            translucent_bsdf = nodes.new(type="ShaderNodeBsdfTranslucent")
+            translucent_bsdf.location = (-400, 200)
+            translucent_bsdf.name = "TranslucentBSDF"
+            # 创建 Ambient Occlusion (AO) 节点
+            ao_node = nodes.new(type="ShaderNodeAmbientOcclusion")
+            ao_node.location = (-600, 200)
+            ao_node.name = "AO"
+            ao_node.label = "AO"
+            # 创建混合着色器节点
+            mix_shader = nodes.new(type="ShaderNodeMixShader")
+            mix_shader.location = (-200, 100)
+            mix_shader.name = "MixShader"
+            mix_shader.label = "MixShader"
+            # 创建 Gamma 节点
+            gamma_node = nodes.new(type="ShaderNodeGamma")
+            gamma_node.location = (-200, 0)
+            gamma_node.name = "Gamma"
+            gamma_node.label = "Gamma"
+            gamma_node.inputs[1].default_value = 0.45
+
+            links.new(ao_node.outputs[0], mix_shader.inputs[0])  # AO 到混合着色器
+            links.new(surface_node.outputs["BSDF"], mix_shader.inputs[2])  # SurfaceShader 到混合着色器
+            links.new(translucent_bsdf.outputs["BSDF"], mix_shader.inputs[1]) 
+            links.new(mix_shader.outputs[0], out_node.inputs["Surface"])  # 混合着色器到材质输出
+            base_color_mix = nodes.get("BaseColorMix")
+            links.new(base_color_mix.outputs[0], translucent_bsdf.inputs["Color"]) 
+            point_color = nodes.get("PointColor")
+            links.new(point_color.outputs[0], gamma_node.inputs[0]) 
+            links.new(gamma_node.outputs[0], base_color_mix.inputs[2]) 
 
         return {'FINISHED'}
 
