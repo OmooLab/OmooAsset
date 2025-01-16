@@ -2,7 +2,7 @@
 
 ![alt text](docs/images/overview.png)
 
-# Omoo Asset 111
+# Omoo Asset 
 
 USD based 3D model storage solution, our goal is **"create once, render anywhere"**.
 If you're struggling to keep your model assets rendering consistently on different platforms by repeatedly creating material spheres manually, and Houdini is in your workflow, then Omoo Asset is the best choice!
